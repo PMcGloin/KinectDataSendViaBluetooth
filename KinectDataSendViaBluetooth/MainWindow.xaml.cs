@@ -76,10 +76,16 @@ namespace KinectDataSendViaBluetooth
             bluetoothDevices = new List<string>();
             InitializeComponent();
         }
+        /// <summary>
+        /// On window load start bluetooth scan
+        /// </summary>
         private void Window_Loaded(object sender, RoutedEventArgs e)
         {
-
+            StartScan();
         }
+        /// <summary>
+        /// On window close dispose of kinect frames and close the sensor
+        /// </summary>
         private void Window_Closed(object sender, EventArgs e)
         {
             if (bodyFrameReader != null)
@@ -94,6 +100,9 @@ namespace KinectDataSendViaBluetooth
                 kinectSensor = null;
             }
         }
+        /// <summary>
+        /// On click of go button
+        /// </summary>
         private void GoButton_Click(object sender, RoutedEventArgs e)
         {
             if (connectionRunning == true)
@@ -110,6 +119,9 @@ namespace KinectDataSendViaBluetooth
                 StartScan();
             }
         }
+        /// <summary>
+        /// StartScan method
+        /// </summary>
         private void StartScan()
         {
             //DevicesListBox.DataSource = null;
@@ -119,6 +131,9 @@ namespace KinectDataSendViaBluetooth
             bluetoothScanThread.Start();
         }
         BluetoothDeviceInfo[] bluetoothDeviceInfo;
+        /// <summary>
+        /// Scan method
+        /// </summary>
         private void Scan()
         {
             UpdateUI("Starting Scan ...");
@@ -133,13 +148,18 @@ namespace KinectDataSendViaBluetooth
             }
             UpdateDevicesList();
         }
+        /// <summary>
+        /// Creates and strats Thread for receive bluetooth data
+        /// </summary>
         private void ConnectAsReceiver()
         {
             Thread bluetoothReceiverThread = new Thread(new ThreadStart(ReceiverConnectThread));
             bluetoothReceiverThread.Start();
         }
-        //Guid mUUID = new Guid("00001101-0000-1000-8000-00805F9B34FB"); replaced by BluetoothService.SerialPort
         bool connectionRunning = false;
+        /// <summary>
+        /// Handles received bluetooth data
+        /// </summary>
         public void ReceiverConnectThread()
         {
             connectionRunning = true;
@@ -164,6 +184,9 @@ namespace KinectDataSendViaBluetooth
                 }
             }
         }
+        /// <summary>
+        /// Writes data to information textbox in window
+        /// </summary>
         private void UpdateUI(string message)
         {
             Dispatcher.Invoke(() =>
@@ -173,6 +196,9 @@ namespace KinectDataSendViaBluetooth
             });
             
         }
+        /// <summary>
+        /// Writes discovered divices to listbox in window
+        /// </summary>
         private void UpdateDevicesList()
         {
             Dispatcher.Invoke(() =>
@@ -184,6 +210,9 @@ namespace KinectDataSendViaBluetooth
             });
         }
         BluetoothDeviceInfo deviceInfo;
+        /// <summary>
+        /// Handles double click of item in devices listbox by creating and starting thread to handle sent data
+        /// </summary>
         private void DevicesListBox_MouseDoubleClick(object sender, MouseButtonEventArgs e)
         {
             deviceInfo = bluetoothDeviceInfo.ElementAt(DevicesListBox.SelectedIndex);
@@ -199,6 +228,9 @@ namespace KinectDataSendViaBluetooth
                 UpdateUI("Pair Failed");
             }
         }
+        /// <summary>
+        /// Creates Bluetooth connection for sending information
+        /// </summary>
         private void SenderConnectThread()
         {
             BluetoothClient bluetoothClient = new BluetoothClient();
@@ -210,7 +242,9 @@ namespace KinectDataSendViaBluetooth
         Body[] bodies;
         byte[] sendAngles;
         string sendAnglesString;
-
+        /// <summary>
+        /// When a send connection connects starts kinect sensor then handles data to be sent
+        /// </summary>
         private void BluetoothSenderConnectCallback(IAsyncResult asyncResult)
         {
             BluetoothClient bluetoothClient = (BluetoothClient)asyncResult.AsyncState;
@@ -242,6 +276,9 @@ namespace KinectDataSendViaBluetooth
                 ready = false;
             }
         }
+        /// <summary>
+        /// Handles and processes frame data, allowing only one users data to be sent
+        /// </summary>
         private void Reader_FrameArrived(object sender, BodyFrameArrivedEventArgs e)
         {
             UpdateUI("Frame arrived");
@@ -335,6 +372,9 @@ namespace KinectDataSendViaBluetooth
             }
         }
         string myPIN = "1234";
+        /// <summary>
+        /// Ensures bluetooth device is paired
+        /// </summary>
         private bool PairDevice()
         {
             if (!deviceInfo.Authenticated)
@@ -347,12 +387,14 @@ namespace KinectDataSendViaBluetooth
             return true;
         }
         bool ready = false;
-        byte[] message;
+        /// <summary>
+        /// Handles data entered into send textbox by sending when enter is pressed
+        /// </summary>
         private void SendTextBox_KeyDown(object sender, KeyEventArgs e)
         {
             if (e.Key == Key.Enter)
             {
-                message = Encoding.ASCII.GetBytes(SendTextBox.Text);
+                sendAngles = Encoding.ASCII.GetBytes(SendTextBox.Text);
                 ready = true;
                 SendTextBox.Clear();
             }
