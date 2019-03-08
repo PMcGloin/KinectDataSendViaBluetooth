@@ -69,8 +69,12 @@ namespace KinectDataSendViaBluetooth
         List<string> bluetoothDevices;
         // index for the currently tracked body
         private int bodyIndex;
+
         // flag to asses if a body is currently tracked
         private bool bodyTracked = false;
+        bool ready = false;
+        bool closeConnection = false;
+
         public MainWindow()
         {
             bluetoothDevices = new List<string>();
@@ -99,32 +103,15 @@ namespace KinectDataSendViaBluetooth
                 kinectSensor.Close();
                 kinectSensor = null;
             }
+            closeConnection = true;
+           
         }
-        /// <summary>
-        /// On click of go button
-        /// </summary>
-        private void GoButton_Click(object sender, RoutedEventArgs e)
-        {
-            if (connectionRunning == true)
-            {
-                UpdateUI("Connection Running");
-                return;
-            }
-            if (ReceiveRadioButton.IsChecked == true)
-            {
-                ConnectAsReceiver();
-            }
-            else
-            {
-                StartScan();
-            }
-        }
+        
         /// <summary>
         /// StartScan method
         /// </summary>
         private void StartScan()
         {
-            //DevicesListBox.DataSource = null;
             DevicesListBox.Items.Clear();
             bluetoothDevices.Clear();
             Thread bluetoothScanThread = new Thread(new ThreadStart(Scan));
@@ -148,42 +135,8 @@ namespace KinectDataSendViaBluetooth
             }
             UpdateDevicesList();
         }
-        /// <summary>
-        /// Creates and strats Thread for receive bluetooth data
-        /// </summary>
-        private void ConnectAsReceiver()
-        {
-            Thread bluetoothReceiverThread = new Thread(new ThreadStart(ReceiverConnectThread));
-            bluetoothReceiverThread.Start();
-        }
-        bool connectionRunning = false;
-        /// <summary>
-        /// Handles received bluetooth data
-        /// </summary>
-        public void ReceiverConnectThread()
-        {
-            connectionRunning = true;
-            UpdateUI("Started ... Waiting for Connection ...");
-            BluetoothListener bluetoothListener = new BluetoothListener(BluetoothService.SerialPort);
-            bluetoothListener.Start();
-            BluetoothClient bluetoothConnection = bluetoothListener.AcceptBluetoothClient();
-            UpdateUI("Device Connected");
-            Stream mStream = bluetoothConnection.GetStream();
-            while (true)
-            {
-                try
-                {
-                    //handle receiver connection
-                    byte[] receivedData = new byte[1024];
-                    mStream.Read(receivedData, 0, receivedData.Length);
-                    UpdateUI("Data Received: " + Encoding.ASCII.GetString(receivedData));
-                }
-                catch (IOException exception)
-                {
-                    UpdateUI("Bluetooth Disconnected");
-                }
-            }
-        }
+        
+        
         /// <summary>
         /// Writes data to information textbox in window
         /// </summary>
@@ -195,6 +148,15 @@ namespace KinectDataSendViaBluetooth
                 InfoTextBox.ScrollToEnd();
             });
             
+        }
+        private void UpdateKinectDataTextBox(string message)
+        {
+            Dispatcher.Invoke(() =>
+            {
+                KinectDataTextBox.AppendText(message + Environment.NewLine);
+                KinectDataTextBox.ScrollToEnd();
+            });
+
         }
         /// <summary>
         /// Writes discovered divices to listbox in window
@@ -228,6 +190,21 @@ namespace KinectDataSendViaBluetooth
                 UpdateUI("Pair Failed");
             }
         }
+        string myPIN = "1234";
+        /// <summary>
+        /// Ensures bluetooth device is paired
+        /// </summary>
+        private bool PairDevice()
+        {
+            if (!deviceInfo.Authenticated)
+            {
+                if (!BluetoothSecurity.PairRequest(deviceInfo.DeviceAddress, myPIN))
+                {
+                    return false;
+                }
+            }
+            return true;
+        }
         /// <summary>
         /// Creates Bluetooth connection for sending information
         /// </summary>
@@ -245,6 +222,7 @@ namespace KinectDataSendViaBluetooth
         /// <summary>
         /// When a send connection connects starts kinect sensor then handles data to be sent
         /// </summary>
+
         private void BluetoothSenderConnectCallback(IAsyncResult asyncResult)
         {
             BluetoothClient bluetoothClient = (BluetoothClient)asyncResult.AsyncState;
@@ -265,6 +243,7 @@ namespace KinectDataSendViaBluetooth
             }
             bluetoothClient.EndConnect(asyncResult);
             Stream bluetoothStream = bluetoothClient.GetStream();
+            
             bluetoothStream.ReadTimeout = 1000;
             while (true)
             {
@@ -272,18 +251,21 @@ namespace KinectDataSendViaBluetooth
                 bluetoothStream.Write(sendAngles, 0, sendAngles.Length);
                 sendAnglesString = Encoding.ASCII.GetString(sendAngles);
                 UpdateUI("Data sent: " + sendAnglesString);
-
                 ready = false;
+                if (closeConnection == true)
+                {
+                    bluetoothStream.Dispose();
+                }
+                
             }
         }
         /// <summary>
-        /// Handles and processes frame data, allowing only one users data to be sent
+        /// Handles and processes frame data, allowing only one users data (right arm) to be sent
         /// </summary>
         private void Reader_FrameArrived(object sender, BodyFrameArrivedEventArgs e)
         {
-            UpdateUI("Frame arrived");
+            //UpdateUI("Frame arrived");
             bool dataReceived = false;
-
             using (BodyFrame bodyFrame = e.FrameReference.AcquireFrame())
             {
                 if (bodyFrame != null)
@@ -302,7 +284,7 @@ namespace KinectDataSendViaBluetooth
             }
             if (dataReceived)
             {
-                UpdateUI("Data Recieved");
+                //UpdateUI("Data Recieved");
                 Body body = null;
                 if (bodyTracked)
                 {
@@ -332,15 +314,13 @@ namespace KinectDataSendViaBluetooth
                 {
                     var shoulderOrintation = body.JointOrientations[JointType.ShoulderRight].Orientation;
                     var shoulderRotationX = (int)shoulderOrintation.Pitch();
-                    var shoulderRotationY = shoulderOrintation.Yaw();
-                    var shoulderRotationZ = shoulderOrintation.Roll();
-                    //sendAngles = Encoding.ASCII.GetBytes(rotationX.ToString());
-                    
+                    //var shoulderRotationY = shoulderOrintation.Yaw();
+                    //var shoulderRotationZ = shoulderOrintation.Roll();
 
                     var wristOrintation = body.JointOrientations[JointType.WristRight].Orientation;
                     var wristRotationX = (int)wristOrintation.Pitch();
-                    var wristRotationY = wristOrintation.Yaw();
-                    var wristRotationZ = wristOrintation.Roll();
+                    //var wristRotationY = wristOrintation.Yaw();
+                    //var wristRotationZ = wristOrintation.Roll();
                     
 
                     Joint spine = body.Joints[JointType.SpineShoulder];
@@ -353,12 +333,12 @@ namespace KinectDataSendViaBluetooth
                     int shoulderAngle = (int)shoulder.Angle(spine, elbow);
                     int wristAngle = (int)wrist.Angle(elbow, hand);
                     
-                    UpdateUI("Shoulder Rotation " + shoulderRotationX.ToString());
-                    UpdateUI("Shoulder angle: " + shoulderAngle.ToString());
-                    UpdateUI("Elbow angle: " + elbowAngle.ToString());
-                    UpdateUI("Wrist angle: " + wristAngle.ToString());
-                    UpdateUI("Wrist Rotation " + wristRotationX.ToString());
-                    UpdateUI("Hand State " + body.HandRightState.ToString());
+                    UpdateKinectDataTextBox("Shoulder Rotation " + shoulderRotationX.ToString());
+                    UpdateKinectDataTextBox("Shoulder angle: " + shoulderAngle.ToString());
+                    UpdateKinectDataTextBox("Elbow angle: " + elbowAngle.ToString());
+                    UpdateKinectDataTextBox("Wrist angle: " + wristAngle.ToString());
+                    UpdateKinectDataTextBox("Wrist Rotation " + wristRotationX.ToString());
+                    UpdateKinectDataTextBox("Hand State " + body.HandRightState.ToString());
 
                     sendAngles = Encoding.ASCII.GetBytes(shoulderRotationX.ToString() + shoulderAngle.ToString() + 
                         elbowAngle.ToString() + wristAngle.ToString() + wristRotationX.ToString() + 
@@ -369,34 +349,6 @@ namespace KinectDataSendViaBluetooth
 
                     ready = true;
                 }
-            }
-        }
-        string myPIN = "1234";
-        /// <summary>
-        /// Ensures bluetooth device is paired
-        /// </summary>
-        private bool PairDevice()
-        {
-            if (!deviceInfo.Authenticated)
-            {
-                if (!BluetoothSecurity.PairRequest(deviceInfo.DeviceAddress, myPIN))
-                {
-                    return false;
-                }
-            }
-            return true;
-        }
-        bool ready = false;
-        /// <summary>
-        /// Handles data entered into send textbox by sending when enter is pressed
-        /// </summary>
-        private void SendTextBox_KeyDown(object sender, KeyEventArgs e)
-        {
-            if (e.Key == Key.Enter)
-            {
-                sendAngles = Encoding.ASCII.GetBytes(SendTextBox.Text);
-                ready = true;
-                SendTextBox.Clear();
             }
         }
     }

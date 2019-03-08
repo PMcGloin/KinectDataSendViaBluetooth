@@ -5,19 +5,16 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:KinectDataSendViaBluetooth"
         mc:Ignorable="d"
-        Title="MainWindow" Height="450" Width="800" Closed="Window_Closed" Loaded="Window_Loaded">
+        Title="MainWindow" Height="800" Width="600" Closed="Window_Closed" Loaded="Window_Loaded">
     <Grid>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="515*"/>
-            <ColumnDefinition Width="68*"/>
-            <ColumnDefinition Width="212*"/>
+            <ColumnDefinition Width="300*"/>
+            <ColumnDefinition Width="300*"/>
+            <ColumnDefinition Width="125*"/>
         </Grid.ColumnDefinitions>
-        <TextBox x:Name="InfoTextBox" HorizontalAlignment="Left" Height="351" Margin="10,10,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="668" Grid.ColumnSpan="3" VerticalScrollBarVisibility="Visible"/>
-        <ListBox x:Name="DevicesListBox" HorizontalAlignment="Left" Height="311" Margin="99.75,10,0,0" VerticalAlignment="Top" Width="102" Grid.Column="2" MouseDoubleClick="DevicesListBox_MouseDoubleClick"/>
-        <Button x:Name="GoButton" Content="GO" HorizontalAlignment="Left" VerticalAlignment="Top" Width="102" Margin="99.75,366,0,0" Height="46" Grid.Column="2" Click="GoButton_Click"/>
-        <RadioButton x:Name="SendRadioButton" Content="Send" HorizontalAlignment="Left" Margin="100,326,0,0" VerticalAlignment="Top" Grid.Column="2" IsChecked="True"/>
-        <RadioButton x:Name="ReceiveRadioButton" Content="Receive" HorizontalAlignment="Left" Margin="100,346,0,0" VerticalAlignment="Top" Grid.Column="2"/>
-        <TextBox x:Name="SendTextBox" HorizontalAlignment="Left" Height="46" Margin="10,366,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="668" Grid.ColumnSpan="3" KeyDown="SendTextBox_KeyDown"/>
+        <TextBox x:Name="InfoTextBox" HorizontalAlignment="Left" Height="752" Margin="10,10,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="226" VerticalScrollBarVisibility="Visible"/>
+        <ListBox x:Name="DevicesListBox" HorizontalAlignment="Left" Height="752" Margin="9.5,10,0,0" VerticalAlignment="Top" Width="83" Grid.Column="2" MouseDoubleClick="DevicesListBox_MouseDoubleClick"/>
+        <TextBox x:Name="KinectDataTextBox" HorizontalAlignment="Left" Height="752" TextWrapping="Wrap" VerticalAlignment="Top" Width="226" Margin="10,10,0,0" Grid.Column="1" VerticalScrollBarVisibility="Visible"/>
 
     </Grid>
 </Window>
