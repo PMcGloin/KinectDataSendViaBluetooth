@@ -10,7 +10,6 @@ using InTheHand.Net.Sockets;
 using System.IO;
 using Microsoft.Kinect;
 using LightBuzz.Vitruvius;
-
 namespace KinectDataSendViaBluetooth
 {
     public static class JointOrientationExtensions
@@ -24,12 +23,9 @@ namespace KinectDataSendViaBluetooth
         {
             double value1 = 2.0 * (quaternion.W * quaternion.X + quaternion.Y * quaternion.Z);
             double value2 = 1.0 - 2.0 * (quaternion.X * quaternion.X + quaternion.Y * quaternion.Y);
-
             double roll = Math.Atan2(value1, value2);
-
             return roll * (180.0 / Math.PI);
         }
-
         /// <summary>
         /// Rotates the specified quaternion around the Y axis.
         /// </summary>
@@ -40,12 +36,9 @@ namespace KinectDataSendViaBluetooth
             double value = 2.0 * (quaternion.W * quaternion.Y - quaternion.Z * quaternion.X);
             value = value > 1.0 ? 1.0 : value;
             value = value < -1.0 ? -1.0 : value;
-
             double pitch = Math.Asin(value);
-
             return pitch * (180.0 / Math.PI);
         }
-
         /// <summary>
         /// Rotates the specified quaternion around the Z axis.
         /// </summary>
@@ -55,9 +48,7 @@ namespace KinectDataSendViaBluetooth
         {
             double value1 = 2.0 * (quaternion.W * quaternion.Z + quaternion.X * quaternion.Y);
             double value2 = 1.0 - 2.0 * (quaternion.Y * quaternion.Y + quaternion.Z * quaternion.Z);
-
             double yaw = Math.Atan2(value1, value2);
-
             return yaw * (180.0 / Math.PI);
         }
     }
@@ -69,17 +60,14 @@ namespace KinectDataSendViaBluetooth
         List<string> bluetoothDevices;
         // index for the currently tracked body
         private int bodyIndex;
-
         // flag to asses if a body is currently tracked
         private bool bodyTracked = false;
         bool ready = false;
         bool closeConnection = false;
-
         public MainWindow()
         {
             bluetoothDevices = new List<string>();
             InitializeComponent();
-            
         }
         /// <summary>
         /// On window load start bluetooth scan
@@ -105,9 +93,7 @@ namespace KinectDataSendViaBluetooth
                 kinectSensor = null;
             }
             closeConnection = true;
-           
         }
-        
         /// <summary>
         /// StartScan method
         /// </summary>
@@ -128,7 +114,6 @@ namespace KinectDataSendViaBluetooth
             BluetoothClient bluetoothClient = new BluetoothClient();
             bluetoothDeviceInfo = bluetoothClient.DiscoverDevicesInRange();
             UpdateUI("Scan Complete");
-
             UpdateUI(bluetoothDeviceInfo.Length.ToString() + " Devices Discovered");
             if (bluetoothDeviceInfo.Length == 0)
             {
@@ -154,16 +139,15 @@ namespace KinectDataSendViaBluetooth
                 InfoTextBox.AppendText(message + Environment.NewLine);
                 InfoTextBox.ScrollToEnd();
             });
-            
         }
-        private void UpdateKinectDataTextBox(string message)
+        private void UpdateKinectDataTextBox(string message, int charValue)
         {
             Dispatcher.Invoke(() =>
             {
-                KinectDataTextBox.AppendText(message + Environment.NewLine);
+
+                KinectDataTextBox.AppendText(message + charValue + Environment.NewLine);
                 KinectDataTextBox.ScrollToEnd();
             });
-
         }
         private void ClearListBox()
         {
@@ -171,7 +155,6 @@ namespace KinectDataSendViaBluetooth
             {
                 DevicesListBox.Items.Clear();
             });
-
         }
         /// <summary>
         /// Writes discovered divices to listbox in window
@@ -234,8 +217,7 @@ namespace KinectDataSendViaBluetooth
         Body[] bodies;
         byte[] sendAngles;
         string sendAnglesString;
-        string convertCharToString;
-        char handState;
+        char handState, prevHandState = (char)10;
         /// <summary>
         /// When a send connection connects starts kinect sensor then handles data to be sent
         /// </summary>
@@ -259,13 +241,11 @@ namespace KinectDataSendViaBluetooth
             }
             bluetoothClient.EndConnect(asyncResult);
             Stream bluetoothStream = bluetoothClient.GetStream();
-            
             bluetoothStream.ReadTimeout = 1000;
             while (true)
             {
                 while (!ready) ;
                 bluetoothStream.Write(sendAngles, 0, sendAngles.Length);
-                //sendAnglesString = Encoding.ASCII.GetString(sendAngles);
                 Array.Clear(sendAngles, 0, sendAngles.Length);
                 UpdateUI("Data sent: " + sendAnglesString);
                 ready = false;
@@ -273,7 +253,6 @@ namespace KinectDataSendViaBluetooth
                 {
                     bluetoothStream.Dispose();
                 }
-                
             }
         }
         /// <summary>
@@ -281,7 +260,6 @@ namespace KinectDataSendViaBluetooth
         /// </summary>
         private void Reader_FrameArrived(object sender, BodyFrameArrivedEventArgs e)
         {
-            //UpdateUI("Frame arrived");
             bool dataReceived = false;
             using (BodyFrame bodyFrame = e.FrameReference.AcquireFrame())
             {
@@ -301,7 +279,6 @@ namespace KinectDataSendViaBluetooth
             }
             if (dataReceived)
             {
-                //UpdateUI("Data Recieved");
                 Body body = null;
                 if (bodyTracked)
                 {
@@ -326,86 +303,188 @@ namespace KinectDataSendViaBluetooth
                         }
                     }
                 }
-                //single currently tracked body
-                if (body != null && bodyTracked && body.IsTracked)
+                if (body != null && bodyTracked && body.IsTracked)  //single currently tracked body
                 {
+                    /* Robotic arm servo angles
+                    1) Shoulder Rotation, allowed values from 0 to 180 degrees
+                    2) Shoulder Angle, allowed values from 15 to 165 degrees
+                    3) Elbow Angle, allowed values from 0 to 180 degrees
+                    4) Wrist Angle, allowed values from 0 to 180 degrees
+                    5) Wrist Rotation, allowed values from 0 to 180 degrees
+                    6) Gripper, allowed values from 10 to 73 degrees. 10: the toungue is open, 73: the gripper is closed.
+                    */
                     var shoulderOrintation = body.JointOrientations[JointType.ShoulderRight].Orientation;
                     char shoulderRotationX = (char)shoulderOrintation.Pitch();
-                    //var shoulderRotationY = shoulderOrintation.Yaw();
-                    //var shoulderRotationZ = shoulderOrintation.Roll();
+                    if (shoulderRotationX < (char)0)    //less than 0
+                    {
+                        shoulderRotationX = (char)0;
+                    }
+                    else if (shoulderRotationX > (char)180) //greater than 180
+                    {
+                        shoulderRotationX = (char)180;
+                    }
+
+                    char shoulderRotationY = (char)shoulderOrintation.Yaw();
+                    if (shoulderRotationY < (char)0)    //less than 0
+                    {
+                        shoulderRotationY = (char)0;
+                    }
+                    else if (shoulderRotationY > (char)180) //greater than 180
+                    {
+                        shoulderRotationY = (char)180;
+                    }
+
+                    char shoulderRotationZ = (char)shoulderOrintation.Roll();
+                    if (shoulderRotationZ < (char)0)    //less than 0
+                    {
+                        shoulderRotationZ = (char)0;
+                    }
+                    else if (shoulderRotationZ > (char)180) //greater than 180
+                    {
+                        shoulderRotationZ = (char)180;
+                    }
 
                     var wristOrintation = body.JointOrientations[JointType.WristRight].Orientation;
                     char wristRotationX = (char)wristOrintation.Pitch();
-                    //var wristRotationY = wristOrintation.Yaw();
-                    //var wristRotationZ = wristOrintation.Roll();
-                    
+                    if (wristRotationX < (char)0)   //less than 0
+                    {
+                        wristRotationX = (char)0;
+                    }
+                    else if (wristRotationX > (char)180)    //greater than 180
+                    {
+                        wristRotationX = (char)180;
+                    }
 
+                    char wristRotationY = (char)wristOrintation.Yaw();
+                    if (wristRotationY < (char)0)   //less than 0
+                    {
+                        wristRotationY = (char)0;
+                    }
+                    else if (wristRotationY > (char)180)    //greater than 180
+                    {
+                        wristRotationY = (char)180;
+                    }
+                    char wristRotationZ = (char)wristOrintation.Roll();
+                    if (wristRotationZ < (char)0)   //less than 0
+                    {
+                        wristRotationZ = (char)0;
+                    }
+                    else if (wristRotationZ > (char)180)    //greater than 180
+                    {
+                        wristRotationZ = (char)180;
+                    }
                     Joint spine = body.Joints[JointType.SpineShoulder];
                     Joint shoulder = body.Joints[JointType.ShoulderRight];
                     Joint elbow = body.Joints[JointType.ElbowRight];
                     Joint wrist = body.Joints[JointType.WristRight];
                     Joint hand = body.Joints[JointType.HandTipRight];
+
+                    char elbowAngle = (char)(elbow.Angle(shoulder, wrist)-90);
                     
-                    char elbowAngle = (char)elbow.Angle(shoulder, wrist);
-                    char shoulderAngle = (char)shoulder.Angle(spine, elbow);
-                    char wristAngle = (char)wrist.Angle(elbow, hand);
+                    if (elbowAngle < (char)0 || elbowAngle > 65000)  //less than 0
+                    {
+                        elbowAngle = (char)0;
+                    }
+                    else if(elbowAngle > (char)90)   //greater than 90
+                    {
+                        elbowAngle = (char)90;
+                    }
                     
-                    UpdateKinectDataTextBox("Shoulder Rotation: " + shoulderRotationX.ToString());
-                    UpdateKinectDataTextBox("Shoulder angle: " + shoulderAngle.ToString());
-                    UpdateKinectDataTextBox("Elbow angle: " + elbowAngle.ToString());
-                    UpdateKinectDataTextBox("Wrist angle: " + wristAngle.ToString());
-                    UpdateKinectDataTextBox("Wrist Rotation: " + wristRotationX.ToString());
-                    UpdateKinectDataTextBox("Hand State: " + body.HandRightState.ToString());
+                    char shoulderAngle = (char)(shoulder.Angle(spine, elbow) - 90); //angle off by 90 deg
+                    if (shoulderAngle < (char)15)   //less than 15
+                    {
+                        shoulderAngle = (char)15;
+                    }
+                    else if (shoulderAngle > (char)165)  //greater than 165
+                    {
+                        shoulderAngle = (char)165;
+                    }
+
+                    char wristAngle = (char)(wrist.Angle(elbow, hand)-90);
+                    if (wristAngle < (char)0)  //less than 0
+                    {
+                        wristAngle = (char)0;
+                    }
+                    else if (wristAngle > (char)180) //greater than 180
+                    {
+                        wristAngle = (char)180;
+                    }
+                    /*
+                    if (body.HandRightState == HandState.Open)
+                    {
+                        handState = (char)10;   //10degrees
+                        prevHandState = handState;
+                    }
+                    else if (body.HandRightState == HandState.Closed)
+                    {
+                        handState = (char)73;    //73degrees
+                        prevHandState = handState;
+                    }
+                    else
+                    {
+                        handState = prevHandState;
+                    }
+                    */
                     
                     switch (body.HandRightState)
                     {
                         case HandState.Open:
-                            handState = '2';
+                            handState = (char)10;   //degrees
+                            prevHandState = handState;
                             break;
                         case HandState.Closed:
-                            handState = '3';
-                            break;
-                        case HandState.Lasso:
-                            handState = '4';
-                            break;
-                        case HandState.Unknown:
-                            handState = '0';
-                            break;
-                        case HandState.NotTracked:
-                            handState = '1';
+                            handState = (char)73;    //73degrees
+                            prevHandState = handState;
                             break;
                         default:
+                            handState = prevHandState;
                             break;
                     }
-                    sendAnglesString = shoulderRotationX.ToString() + shoulderAngle.ToString() +
-                    elbowAngle.ToString() + wristAngle.ToString() + wristRotationX.ToString() +
+                    
+                    UpdateKinectDataTextBox("Shoulder RotationX: ", shoulderRotationX);
+                    UpdateKinectDataTextBox("Shoulder RotationY: ", shoulderRotationY);
+                    UpdateKinectDataTextBox("Shoulder RotationZ: ", shoulderRotationZ);
+                    UpdateKinectDataTextBox("Shoulder angle: ", shoulderAngle);
+                    UpdateKinectDataTextBox("Elbow angle: ", elbowAngle);
+                    UpdateKinectDataTextBox("Wrist angle: ", wristAngle);
+                    UpdateKinectDataTextBox("Wrist RotationX: ", wristRotationX);
+                    UpdateKinectDataTextBox("Wrist RotationY: ", wristRotationY);
+                    UpdateKinectDataTextBox("Wrist RotationZ: ", wristRotationZ);
+                    UpdateKinectDataTextBox("Hand State: ", handState);
+                    
+                    //elbow, wrist angle, wrist rotation, ???,shoulder rotation , shoulder angle
+                    sendAnglesString = elbowAngle.ToString() + wristAngle.ToString() +
+                    wristRotationZ.ToString() + handState.ToString() + shoulderRotationZ.ToString()
+                    + shoulderAngle.ToString();
+                    
+                    /*
+                    sendAnglesString = shoulderRotationZ.ToString() + shoulderAngle.ToString() +
+                    elbowAngle.ToString() + wristAngle.ToString() + wristRotationZ.ToString() +
                     handState.ToString();
+                    */
                     sendAngles = Encoding.ASCII.GetBytes(sendAnglesString);
-
-                    /*UpdateKinectDataTextBox("Shoulder Rotation " + shoulderRotationX);
-                    UpdateKinectDataTextBox("Shoulder angle: " + shoulderAngle);
-                    UpdateKinectDataTextBox("Elbow angle: " + elbowAngle);
-                    UpdateKinectDataTextBox("Wrist angle: " + wristAngle);
-                    UpdateKinectDataTextBox("Wrist Rotation " + wristRotationX);
-                    UpdateKinectDataTextBox("Hand State " + body.HandRightState);*/
-
-                    /*sendAngles = Encoding.ASCII.GetBytes(shoulderRotationX.ToString() + shoulderAngle.ToString() + 
-                    elbowAngle.ToString() + wristAngle.ToString() + wristRotationX.ToString() + 
-                    handState.ToString());*/
-
-                    /*sendAngles = Encoding.ASCII.GetBytes(shoulderRotationX + shoulderAngle +
-                    elbowAngle + wristAngle + wristRotationX +
-                    body.HandRightState.ToString());*/
-
-                    /*sendAngles = Encoding.ASCII.GetBytes(shoulderRotationX + shoulderAngle +
-                    elbowAngle + wristAngle + wristRotationX +
-                    handState.ToString());*/
-
-                    //test code
-                    //sendAngles = Encoding.ASCII.GetBytes(body.HandRightState.ToString());
-                    //sendAngles = Encoding.ASCII.GetBytes("A");
-                    //sendAngles = Encoding.Unicode.GetBytes("A");
                     ready = true;
+
+                    /*
+                    sendAngles = Encoding.ASCII.GetBytes(shoulderRotationZ.ToString());
+                    ready = true;
+                    System.Threading.Thread.Sleep(1);
+                    sendAngles = Encoding.ASCII.GetBytes(shoulderAngle.ToString());
+                    ready = true;
+                    System.Threading.Thread.Sleep(1);
+                    sendAngles = Encoding.ASCII.GetBytes(elbowAngle.ToString());
+                    ready = true;
+                    System.Threading.Thread.Sleep(1);
+                    sendAngles = Encoding.ASCII.GetBytes(wristAngle.ToString());
+                    ready = true;
+                    System.Threading.Thread.Sleep(1);
+                    sendAngles = Encoding.ASCII.GetBytes(wristRotationZ.ToString());
+                    ready = true;
+                    System.Threading.Thread.Sleep(1);
+                    sendAngles = Encoding.ASCII.GetBytes(handState.ToString());
+                    ready = true;
+                    System.Threading.Thread.Sleep(1);
+                    */
                 }
             }
         }
