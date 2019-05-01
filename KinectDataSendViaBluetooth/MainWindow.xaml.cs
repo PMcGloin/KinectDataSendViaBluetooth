@@ -380,8 +380,7 @@ namespace KinectDataSendViaBluetooth
                     Joint hand = body.Joints[JointType.HandTipRight];
 
                     char elbowAngle = (char)(elbow.Angle(shoulder, wrist)-90);
-                    
-                    if (elbowAngle < (char)0 || elbowAngle > 65000)  //less than 0
+                    if (elbowAngle < (char)0 || elbowAngle > 65000)  //less than 0 or over run
                     {
                         elbowAngle = (char)0;
                     }
@@ -391,7 +390,7 @@ namespace KinectDataSendViaBluetooth
                     }
                     
                     char shoulderAngle = (char)(shoulder.Angle(spine, elbow) - 90); //angle off by 90 deg
-                    if (shoulderAngle < (char)15)   //less than 15
+                    if (shoulderAngle < (char)15 || shoulderAngle > 65000)   //less than 15 or over run
                     {
                         shoulderAngle = (char)15;
                     }
@@ -409,27 +408,10 @@ namespace KinectDataSendViaBluetooth
                     {
                         wristAngle = (char)180;
                     }
-                    /*
-                    if (body.HandRightState == HandState.Open)
-                    {
-                        handState = (char)10;   //10degrees
-                        prevHandState = handState;
-                    }
-                    else if (body.HandRightState == HandState.Closed)
-                    {
-                        handState = (char)73;    //73degrees
-                        prevHandState = handState;
-                    }
-                    else
-                    {
-                        handState = prevHandState;
-                    }
-                    */
-                    
                     switch (body.HandRightState)
                     {
                         case HandState.Open:
-                            handState = (char)10;   //degrees
+                            handState = (char)10;   //10 degrees
                             prevHandState = handState;
                             break;
                         case HandState.Closed:
@@ -440,7 +422,6 @@ namespace KinectDataSendViaBluetooth
                             handState = prevHandState;
                             break;
                     }
-                    
                     UpdateKinectDataTextBox("Shoulder RotationX: ", shoulderRotationX);
                     UpdateKinectDataTextBox("Shoulder RotationY: ", shoulderRotationY);
                     UpdateKinectDataTextBox("Shoulder RotationZ: ", shoulderRotationZ);
@@ -451,40 +432,14 @@ namespace KinectDataSendViaBluetooth
                     UpdateKinectDataTextBox("Wrist RotationY: ", wristRotationY);
                     UpdateKinectDataTextBox("Wrist RotationZ: ", wristRotationZ);
                     UpdateKinectDataTextBox("Hand State: ", handState);
-                    
+
                     //elbow, wrist angle, wrist rotation, ???,shoulder rotation , shoulder angle
                     sendAnglesString = elbowAngle.ToString() + wristAngle.ToString() +
                     wristRotationZ.ToString() + handState.ToString() + shoulderRotationZ.ToString()
                     + shoulderAngle.ToString();
                     
-                    /*
-                    sendAnglesString = shoulderRotationZ.ToString() + shoulderAngle.ToString() +
-                    elbowAngle.ToString() + wristAngle.ToString() + wristRotationZ.ToString() +
-                    handState.ToString();
-                    */
                     sendAngles = Encoding.ASCII.GetBytes(sendAnglesString);
                     ready = true;
-
-                    /*
-                    sendAngles = Encoding.ASCII.GetBytes(shoulderRotationZ.ToString());
-                    ready = true;
-                    System.Threading.Thread.Sleep(1);
-                    sendAngles = Encoding.ASCII.GetBytes(shoulderAngle.ToString());
-                    ready = true;
-                    System.Threading.Thread.Sleep(1);
-                    sendAngles = Encoding.ASCII.GetBytes(elbowAngle.ToString());
-                    ready = true;
-                    System.Threading.Thread.Sleep(1);
-                    sendAngles = Encoding.ASCII.GetBytes(wristAngle.ToString());
-                    ready = true;
-                    System.Threading.Thread.Sleep(1);
-                    sendAngles = Encoding.ASCII.GetBytes(wristRotationZ.ToString());
-                    ready = true;
-                    System.Threading.Thread.Sleep(1);
-                    sendAngles = Encoding.ASCII.GetBytes(handState.ToString());
-                    ready = true;
-                    System.Threading.Thread.Sleep(1);
-                    */
                 }
             }
         }
